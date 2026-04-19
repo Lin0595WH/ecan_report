@@ -139,7 +139,7 @@
 <body class="bg-gray-50 font-inter">
 <div class="form-container">
     <!-- 页面标题 -->
-<!--    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6" aria-label="部门周报提交表单">周报</h1>-->
+    <!--    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6" aria-label="部门周报提交表单">周报</h1>-->
 
     <!-- Tab 页签切换 -->
     <div class="border-b border-gray-200 mb-6">
@@ -349,8 +349,6 @@
                             readonly
                             placeholder="个人周报内容将在这里显示..."
                     ></textarea>
-                    <!-- 字符计数 -->
-                    <div id="personalReportCounter" class="char-counter">0/2000</div>
                 </div>
             </div>
 
@@ -393,7 +391,6 @@
             userPasswordInput: document.getElementById('userPassword'),
             getPersonalReportBtn: document.getElementById('getPersonalReportBtn'),
             personalReportContent: document.getElementById('personalReportContent'),
-            personalReportCounter: document.getElementById('personalReportCounter'),
             personalReportMessage: document.getElementById('personalReportMessage')
         };
 
@@ -552,14 +549,9 @@
         });
 
         // ====================== 个人周报查询逻辑 ======================
-        elements.personalReportContent.addEventListener('input', function() {
-            updateCharCounter(this, elements.personalReportCounter);
-        });
-
         elements.getPersonalReportBtn.addEventListener('click', async function() {
             elements.personalReportMessage.classList.add('hidden');
             elements.personalReportContent.value = '';
-            updateCharCounter(elements.personalReportContent, elements.personalReportCounter);
 
             const account = elements.userAccountInput.value.trim();
             const password = elements.userPasswordInput.value.trim();
@@ -582,7 +574,6 @@
                 const result = await response.json();
                 if (response.ok && result.success) {
                     elements.personalReportContent.value = result.data || '暂无个人周报数据';
-                    updateCharCounter(elements.personalReportContent, elements.personalReportCounter);
                     showMessage(elements.personalReportMessage, '个人周报获取成功！', 'success');
                 } else {
                     showMessage(elements.personalReportMessage, result.message || '获取个人周报失败，请重试', 'error');
@@ -597,13 +588,6 @@
         });
 
         // ====================== 通用工具函数 ======================
-        function updateCharCounter(textarea, counterElement) {
-            const length = textarea.value.length;
-            const maxLength = CONFIG.MAX_CONTENT_LENGTH;
-            counterElement.textContent = `${length}/${maxLength}`;
-            counterElement.classList.toggle('char-counter-exceed', length > maxLength);
-        }
-
         function showMessage(element, message, type) {
             element.className = 'mt-6 p-4 rounded-lg';
             if (type === 'success') {
