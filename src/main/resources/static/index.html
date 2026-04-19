@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部门周报提交</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#0ea5e9',
+                        neutral: '#f1f5f9',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none;
+            }
+
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+            }
+
+            .form-container {
+                @apply bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-4xl mx-auto my-8;
+            }
+
+            .form-input {
+                @apply w-full px-10 py-2 border border-gray-300 rounded-lg input-focus transition-all duration-200;
+            }
+
+            .form-label {
+                @apply block text-sm font-medium text-gray-700 mb-1;
+            }
+
+            .section-title {
+                @apply text-xl font-semibold text-gray-800 mb-4 mt-6 flex items-center;
+            }
+
+            .divider {
+                @apply my-6 border-t border-gray-200 relative;
+            }
+
+            .divider-text {
+                @apply absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-gray-500 text-sm font-medium;
+            }
+
+            .input-icon {
+                @apply absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none;
+            }
+            .btn-section {
+                @apply mb-3; /* 增大按钮区域底部间距 */
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-inter">
+<div class="form-container animate-fade-in">
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">部门周报提交</h1>
+
+    <label for="personList" class="form-label">人员列表（用顿号分隔，结尾不要留空格）</label>
+    <div class="relative">
+            <span class="input-icon">
+                <i class="fa fa-users"></i>
+            </span>
+        <input type="text" id="personList" class="form-input"
+               value="周成、吴嘉淮、傅兴佳、何名忠、黄少菱、江剑乐、林伟恒、卢炜东">
+    </div>
+    <div class="btn-section">
+        <button id="regenerateBtn" class="btn-primary mt-4" onclick="regenerateControls()">重新生成</button>
+    </div>
+
+    <form id="weeklyReportForm" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="meetingAddress" class="form-label">会议地点</label>
+                <div class="relative">
+                        <span class="input-icon">
+                            <i class="fa fa-map-marker"></i>
+                        </span>
+                    <select id="meetingAddress" name="meetingAddress" class="form-input" required>
+                        <option value="三楼一">三楼一</option>
+                        <option value="三楼二">三楼二</option>
+                        <option value="三楼三">三楼三</option>
+                        <option value="二楼大会议室">二楼大会议室</option>
+                        <option value="二楼小会议室">二楼小会议室</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="host" class="form-label">主持人</label>
+                <div class="relative">
+                        <span class="input-icon">
+                            <i class="fa fa-user"></i>
+                        </span>
+                    <select id="host" name="host" class="form-input" required></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider">
+            <span class="divider-text">周报内容</span>
+        </div>
+
+        <div id="reportSections" class="space-y-6"></div>
+
+        <div class="flex justify-center mt-8">
+            <button type="submit" id="submitBtn" class="btn-primary w-full md:w-auto">
+                <i class="fa fa-paper-plane mr-2"></i>提交周报
+            </button>
+        </div>
+    </form>
+
+    <div id="responseMessage" class="mt-6 hidden"></div>
+</div>
+
+<script>
+    function regenerateControls() {
+        const personListInput = document.getElementById('personList');
+        const personList = personListInput.value.split('、');
+
+        // 动态生成主持人下拉选项
+        const hostSelect = document.getElementById('host');
+        hostSelect.innerHTML = '';
+        personList.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person;
+            option.textContent = person;
+            hostSelect.appendChild(option);
+        });
+
+        // 动态生成周报输入区域
+        const reportSections = document.getElementById('reportSections');
+        reportSections.innerHTML = '';
+
+        personList.forEach((person, index) => {
+            const section = document.createElement('div');
+            section.className = 'report-section';
+            section.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="section-title">
+                            <i class="fa fa-user-circle text-primary mr-2"></i>
+                            ${person}
+                        </h3>
+                    </div>
+                    <div class="relative">
+                        <textarea id="reportContent${index + 1}" name="personalWeeklyReports[${index}].weeklyReportContent"
+                            class="form-input h-40 resize-none" required></textarea>
+                        <div class="absolute bottom-2 right-2 text-xs text-gray-500">
+                            <span id="charCount${index + 1}">0</span>/2000
+                        </div>
+                    </div>
+                `;
+            reportSections.appendChild(section);
+        });
+
+        // 字符计数功能
+        personList.forEach((_, index) => {
+            const textarea = document.getElementById(`reportContent${index + 1}`);
+            const countId = `charCount${index + 1}`;
+            const charCountEl = document.getElementById(countId);
+
+            textarea.addEventListener('input', function () {
+                const count = this.value.length;
+                charCountEl.textContent = count;
+
+                if (count > 2000) {
+                    charCountEl.classList.add('text-danger');
+                    this.value = this.value.substring(0, 2000);
+                    charCountEl.textContent = 2000;
+                } else {
+                    charCountEl.classList.remove('text-danger');
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // 页面加载时初始化
+        regenerateControls();
+
+        // 表单提交处理
+        const form = document.getElementById('weeklyReportForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseMessage = document.getElementById('responseMessage');
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // 禁用提交按钮防止重复提交
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>提交中...';
+
+            const personListInput = document.getElementById('personList');
+            const persons = personListInput.value.split('、');
+
+            // 构建表单数据
+            const formData = {
+                meetingAddress: document.getElementById('meetingAddress').value,
+                host: document.getElementById('host').value,
+                personalWeeklyReports: persons.map((person, index) => ({
+                    name: person,
+                    weeklyReportContent: document.getElementById(`reportContent${index + 1}`).value
+                }))
+            };
+            const localUrl  = 'localhost';
+            // const proUrl = '118.190.154.6';
+            // 发送请求
+            fetch('http://' + localUrl +':9123/api/weekly_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        // 错误响应处理保持不变
+                        return response.text().then(text => {
+                            throw new Error(`服务器返回错误 (${response.status}): ${text}`);
+                        });
+                    }
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let fileName = 'weekly_report.docx'; // 默认文件名
+
+                    if (contentDisposition) {
+                        const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (matches && matches[1]) {
+                            // 移除引号并解码URI组件
+                            let encodedFileName = matches[1].replace(/['"]/g, '');
+                            fileName = decodeURIComponent(encodedFileName);
+                        }
+                    }
+                    // 直接处理为Blob，不检查Content-Type
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        showResponseMessage('success', '周报提交成功！', '已成功生成并下载周报文件。');
+                        // 恢复按钮状态
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa fa-paper-plane mr-2"></i>提交周报';
+                    });
+                })
+                .catch(error => {
+                    console.error('请求失败:', error);
+                    showResponseMessage('error', '提交失败', error.message);
+                    // 恢复按钮状态
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa fa-paper-plane mr-2"></i>提交周报';
+                });
+        });
+
+        // 显示响应消息
+        function showResponseMessage(type, title, message) {
+            let bgColor, textColor, icon;
+
+            if (type === 'success') {
+                bgColor = 'bg-success/10';
+                textColor = 'text-success';
+                icon = 'fa-check-circle';
+            } else {
+                bgColor = 'bg-danger/10';
+                textColor = 'text-danger';
+                icon = 'fa-exclamation-circle';
+            }
+
+            responseMessage.className = `mt-6 ${bgColor} ${textColor} p-4 rounded-lg shadow-sm`;
+            responseMessage.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fa ${icon} text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium">${title}</h3>
+                            <div class="mt-2 text-sm">
+                                <p>${message}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            responseMessage.classList.remove('hidden');
+
+            // 3秒后自动隐藏消息
+            setTimeout(() => {
+                responseMessage.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => {
+                    responseMessage.classList.add('hidden');
+                    responseMessage.classList.remove('opacity-0');
+                }, 500);
+            }, 3000);
+        }
+    });
+</script>
+</body>
+
+</html>
