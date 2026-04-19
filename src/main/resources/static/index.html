@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>部门周报提交系统</title>
+    <title>周报提交系统</title>
     <!-- 外部资源加载 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -89,7 +89,12 @@
             .input-icon {
                 @apply absolute left-0 flex items-center pl-3 text-gray-500 pointer-events-none;
                 top: 35%;
-                transform: translateY(-50%);
+                transform: translateY(-35%);
+            }
+            .input-icon-person {
+                @apply absolute left-0 flex items-center pl-3 text-gray-500 pointer-events-none;
+                top: 35%;
+                /*transform: translateY(-35%);*/
             }
 
             /* 下拉框右侧箭头 */
@@ -100,7 +105,7 @@
             /* 下拉框样式 */
             .form-select {
                 @apply w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 appearance-none bg-none cursor-pointer;
-                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 20 20' %3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
                 background-position: right 0.75rem center;
                 background-repeat: no-repeat;
                 background-size: 1.5em 1.5em;
@@ -113,6 +118,20 @@
             .char-counter-exceed {
                 @apply text-danger;
             }
+
+            /* Tab 页样式 */
+            .tab-item {
+                @apply px-6 py-3 font-medium text-gray-600 cursor-pointer transition-all border-b-2 border-transparent;
+            }
+            .tab-item.active {
+                @apply text-primary border-primary font-semibold;
+            }
+            .tab-content {
+                @apply hidden;
+            }
+            .tab-content.active {
+                @apply block animate-fade-in;
+            }
         }
     </style>
 </head>
@@ -120,129 +139,225 @@
 <body class="bg-gray-50 font-inter">
 <div class="form-container">
     <!-- 页面标题 -->
-    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6" aria-label="部门周报提交表单">部门周报提交</h1>
+<!--    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6" aria-label="部门周报提交表单">周报</h1>-->
 
-    <!-- 人员列表输入区域 -->
-    <div class="mb-4">
-        <label for="personList" class="form-label">
-            <i class="fa fa-users mr-1"></i>人员列表（用顿号分隔，结尾不要留空格）
-        </label>
-        <div class="relative">
-                <span class="input-icon">
-                    <i class="fa fa-users"></i>
-                </span>
-            <input
-                    type="text"
-                    id="personList"
-                    class="form-input"
-                    aria-describedby="personListHint"
-                    value="周成、傅兴佳、何名忠、黄少菱、江剑乐、林伟恒、卢炜东"
-            >
-            <p id="personListHint" class="mt-1 text-xs text-gray-500">示例：张三、李四、王五</p>
+    <!-- Tab 页签切换 -->
+    <div class="border-b border-gray-200 mb-6">
+        <div class="flex space-x-4">
+            <div class="tab-item active" data-tab="dept-report">
+                <i class="fa fa-file-text-o mr-2"></i>部门周报提交
+            </div>
+            <div class="tab-item" data-tab="personal-report">
+                <i class="fa fa-user-circle-o mr-2"></i>个人周报查询
+            </div>
         </div>
     </div>
 
-    <!-- 重新生成按钮 -->
-    <div class="btn-section">
-        <button
-                id="regenerateBtn"
-                class="btn-primary mt-4"
-                aria-label="重新生成人员表单控件"
-        >
-            <i class="fa fa-refresh mr-2"></i>重新生成
-        </button>
-    </div>
+    <!-- 原有部门周报提交 Tab 内容 -->
+    <div class="tab-content active" id="dept-report">
+        <!-- 人员列表输入区域 -->
+        <div class="mb-4">
+            <label for="personList" class="form-label">
+                <i class="fa fa-users mr-1"></i>人员列表（用顿号分隔，结尾不要留空格）
+            </label>
+            <div class="relative">
+                    <span class="input-icon">
+                        <i class="fa fa-users"></i>
+                    </span>
+                <input
+                        type="text"
+                        id="personList"
+                        class="form-input"
+                        aria-describedby="personListHint"
+                        value="周成、傅兴佳、何名忠、黄少菱、江剑乐、林伟恒、卢炜东"
+                >
+                <p id="personListHint" class="mt-1 text-xs text-gray-500">示例：张三、李四、王五</p>
+            </div>
+        </div>
 
-    <!-- 主表单 -->
-    <form id="weeklyReportForm" class="space-y-6" novalidate>
-        <!-- 会议基本信息 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- 会议地点 -->
-            <div>
-                <label for="meetingAddress" class="form-label">
-                    <i class="fa fa-map-marker mr-1"></i>会议地点
+        <!-- 重新生成按钮 -->
+        <div class="btn-section">
+            <button
+                    id="regenerateBtn"
+                    class="btn-primary mt-4"
+                    aria-label="重新生成人员表单控件"
+            >
+                <i class="fa fa-refresh mr-2"></i>重新生成
+            </button>
+        </div>
+
+        <!-- 主表单 -->
+        <form id="weeklyReportForm" class="space-y-6" novalidate>
+            <!-- 会议基本信息 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 会议地点 -->
+                <div>
+                    <label for="meetingAddress" class="form-label">
+                        <i class="fa fa-map-marker mr-1"></i>会议地点
+                    </label>
+                    <div class="relative">
+                            <span class="input-icon">
+                                <i class="fa fa-map-marker"></i>
+                            </span>
+                        <select
+                                id="meetingAddress"
+                                name="meetingAddress"
+                                class="form-select"
+                                required
+                                aria-required="true"
+                        >
+                            <option value="三楼一">三楼一</option>
+                            <option value="三楼二">三楼二</option>
+                            <option value="三楼三">三楼三</option>
+                            <option value="二楼大会议室">二楼大会议室</option>
+                            <option value="二楼小会议室">二楼小会议室</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 主持人 -->
+                <div>
+                    <label for="host" class="form-label">
+                        <i class="fa fa-user mr-1"></i>主持人
+                    </label>
+                    <div class="relative">
+                            <span class="input-icon">
+                                <i class="fa fa-user"></i>
+                            </span>
+                        <select
+                                id="host"
+                                name="host"
+                                class="form-select"
+                                required
+                                aria-required="true"
+                        ></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 会议评审内容 -->
+            <div class="mt-6">
+                <label for="reviewContent" class="form-label">
+                    <i class="fa fa-commenting mr-1"></i>会议评审内容
                 </label>
                 <div class="relative">
-                        <span class="input-icon">
-                            <i class="fa fa-map-marker"></i>
+                    <span class="input-icon" style="top: 10%;">
+                        <i class="fa fa-commenting"></i>
+                    </span>
+                    <textarea
+                            id="reviewContent"
+                            name="reviewContent"
+                            class="form-input h-24 resize-none"
+                            aria-label="会议评审内容"
+                    ></textarea>
+                </div>
+            </div>
+
+            <!-- 分割线 -->
+            <div class="divider">
+                <span class="divider-text">周报内容</span>
+            </div>
+
+            <!-- 动态生成的周报内容区域 -->
+            <div id="reportSections" class="space-y-6" aria-live="polite"></div>
+
+            <!-- 提交按钮 -->
+            <div class="flex justify-center mt-8">
+                <button
+                        type="submit"
+                        id="submitBtn"
+                        class="btn-primary w-full md:w-auto"
+                        aria-label="提交周报表单"
+                >
+                    <i class="fa fa-paper-plane mr-2"></i>提交周报
+                </button>
+            </div>
+        </form>
+
+        <!-- 响应消息提示 -->
+        <div id="responseMessage" class="mt-6 hidden" aria-live="assertive"></div>
+    </div>
+
+    <!-- 新增个人周报查询 Tab 内容 -->
+    <div class="tab-content" id="personal-report">
+        <form id="personalReportForm" class="space-y-6">
+            <!-- 账号输入 -->
+            <div class="mb-4">
+                <label for="userAccount" class="form-label">
+                    <i class="fa fa-id-card mr-1"></i>账号
+                </label>
+                <div class="relative">
+                        <span class="input-icon-person">
+                            <i class="fa fa-id-card"></i>
                         </span>
-                    <select
-                            id="meetingAddress"
-                            name="meetingAddress"
-                            class="form-select"
+                    <input
+                            type="text"
+                            id="userAccount"
+                            class="form-input"
+                            placeholder="请输入您的账号"
                             required
                             aria-required="true"
                     >
-                        <option value="三楼一">三楼一</option>
-                        <option value="三楼二">三楼二</option>
-                        <option value="三楼三">三楼三</option>
-                        <option value="二楼大会议室">二楼大会议室</option>
-                        <option value="二楼小会议室">二楼小会议室</option>
-                    </select>
                 </div>
             </div>
 
-            <!-- 主持人 -->
-            <div>
-                <label for="host" class="form-label">
-                    <i class="fa fa-user mr-1"></i>主持人
+            <!-- 密码输入 -->
+            <div class="mb-4">
+                <label for="userPassword" class="form-label">
+                    <i class="fa fa-lock mr-1"></i>密码
                 </label>
                 <div class="relative">
-                        <span class="input-icon">
-                            <i class="fa fa-user"></i>
+                        <span class="input-icon-person">
+                            <i class="fa fa-lock"></i>
                         </span>
-                    <select
-                            id="host"
-                            name="host"
-                            class="form-select"
+                    <input
+                            type="password"
+                            id="userPassword"
+                            class="form-input"
+                            placeholder="请输入您的密码"
                             required
                             aria-required="true"
-                    ></select>
+                    >
                 </div>
             </div>
-        </div>
 
-        <!-- 会议评审内容 -->
-        <div class="mt-6">
-            <label for="reviewContent" class="form-label">
-                <i class="fa fa-commenting mr-1"></i>会议评审内容
-            </label>
-            <div class="relative">
-                <span class="input-icon" style="top: 10%;">
-                    <i class="fa fa-commenting"></i>
-                </span>
-                <textarea
-                        id="reviewContent"
-                        name="reviewContent"
-                        class="form-input h-24 resize-none"
-                        aria-label="会议评审内容"
-                ></textarea>
+            <!-- 获取个人周报按钮 -->
+            <div class="btn-section">
+                <button
+                        type="button"
+                        id="getPersonalReportBtn"
+                        class="btn-primary mt-4 w-full md:w-auto"
+                        aria-label="获取个人周报"
+                >
+                    <i class="fa fa-search mr-2"></i>获取个人周报
+                </button>
             </div>
-        </div>
 
-        <!-- 分割线 -->
-        <div class="divider">
-            <span class="divider-text">周报内容</span>
-        </div>
+            <!-- 个人周报回显区域 -->
+            <div class="mt-6">
+                <label for="personalReportContent" class="form-label">
+                    <i class="fa fa-file-text mr-1"></i>个人周报内容
+                </label>
+                <div class="relative">
+                    <span class="input-icon" style="top: 10%;">
+                        <i class="fa fa-file-text"></i>
+                    </span>
+                    <textarea
+                            id="personalReportContent"
+                            class="form-input h-64 resize-none"
+                            aria-label="个人周报内容"
+                            readonly
+                            placeholder="个人周报内容将在这里显示..."
+                    ></textarea>
+                    <!-- 字符计数 -->
+                    <div id="personalReportCounter" class="char-counter">0/2000</div>
+                </div>
+            </div>
 
-        <!-- 动态生成的周报内容区域 -->
-        <div id="reportSections" class="space-y-6" aria-live="polite"></div>
-
-        <!-- 提交按钮 -->
-        <div class="flex justify-center mt-8">
-            <button
-                    type="submit"
-                    id="submitBtn"
-                    class="btn-primary w-full md:w-auto"
-                    aria-label="提交周报表单"
-            >
-                <i class="fa fa-paper-plane mr-2"></i>提交周报
-            </button>
-        </div>
-    </form>
-
-    <!-- 响应消息提示 -->
-    <div id="responseMessage" class="mt-6 hidden" aria-live="assertive"></div>
+            <!-- 个人周报操作提示 -->
+            <div id="personalReportMessage" class="mt-6 hidden p-4 rounded-lg" aria-live="assertive"></div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -250,6 +365,7 @@
     const CONFIG = {
         API_BASE_URL: 'http://localhost:9123',
         API_ENDPOINT: '/api/weekly_report',
+        PERSONAL_API_ENDPOINT: '/api/personal_report',
         MAX_CONTENT_LENGTH: 2000,
         MESSAGE_DISPLAY_DURATION: 3000
     };
@@ -258,390 +374,248 @@
     document.addEventListener('DOMContentLoaded', function () {
         // 初始化DOM元素引用
         const elements = {
+            // 原有元素
             personListInput: document.getElementById('personList'),
             hostSelect: document.getElementById('host'),
             reportSections: document.getElementById('reportSections'),
             form: document.getElementById('weeklyReportForm'),
             submitBtn: document.getElementById('submitBtn'),
             regenerateBtn: document.getElementById('regenerateBtn'),
-            responseMessage: document.getElementById('responseMessage')
+            responseMessage: document.getElementById('responseMessage'),
+
+            // 新增Tab相关元素
+            tabItems: document.querySelectorAll('.tab-item'),
+            tabContents: document.querySelectorAll('.tab-content'),
+
+            // 新增个人周报相关元素
+            personalReportForm: document.getElementById('personalReportForm'),
+            userAccountInput: document.getElementById('userAccount'),
+            userPasswordInput: document.getElementById('userPassword'),
+            getPersonalReportBtn: document.getElementById('getPersonalReportBtn'),
+            personalReportContent: document.getElementById('personalReportContent'),
+            personalReportCounter: document.getElementById('personalReportCounter'),
+            personalReportMessage: document.getElementById('personalReportMessage')
         };
 
-        // 初始化事件监听
-        initEventListeners(elements);
-
-        // 初始生成控件
-        regenerateControls(elements);
-    });
-
-    /**
-     * 初始化所有事件监听
-     * @param {Object} elements - DOM元素引用对象
-     */
-    function initEventListeners(elements) {
-        // 重新生成按钮点击事件
-        elements.regenerateBtn.addEventListener('click', () => regenerateControls(elements));
-
-        // 表单提交事件
-        elements.form.addEventListener('submit', (e) => handleFormSubmit(e, elements));
-    }
-
-    /**
-     * 重新生成人员相关表单控件
-     * @param {Object} elements - DOM元素引用对象
-     */
-    function regenerateControls(elements) {
-        try {
-            // 获取并清洗人员列表数据
-            const personList = getCleanPersonList(elements.personListInput.value);
-
-            // 生成主持人下拉选项
-            generateHostOptions(elements.hostSelect, personList);
-
-            // 生成周报内容区域
-            generateReportSections(elements.reportSections, personList);
-
-            // 初始化字符计数监听
-            initCharacterCounters(personList.length);
-        } catch (error) {
-            showResponseMessage('error', '生成失败', '人员列表格式错误，请检查输入内容');
-            console.error('Regenerate controls error:', error);
+        // ====================== 原有核心功能：重新生成 & 主持人下拉 ======================
+        // 解析人员列表
+        function parsePersonList() {
+            const text = elements.personListInput.value.trim();
+            return text.split('、').filter(name => name.trim() !== '');
         }
-    }
 
-    /**
-     * 清洗人员列表数据
-     * @param {string} rawInput - 原始输入字符串
-     * @returns {Array} 清洗后的人员列表数组
-     */
-    function getCleanPersonList(rawInput) {
-        return rawInput
-            .trim()
-            .split('、')
-            .filter(person => person.trim().length > 0)
-            .map(person => person.trim());
-    }
+        // 更新主持人下拉选项
+        function updateHostOptions(persons) {
+            elements.hostSelect.innerHTML = '';
+            persons.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                elements.hostSelect.appendChild(option);
+            });
+        }
 
-    /**
-     * 生成主持人下拉选项
-     * @param {HTMLElement} selectElement - 下拉选择框元素
-     * @param {Array} personList - 人员列表数组
-     */
-    function generateHostOptions(selectElement, personList) {
-        // 清空现有选项
-        selectElement.innerHTML = '';
-
-        // 添加默认提示选项
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = '请选择主持人';
-        defaultOption.disabled = true;
-        defaultOption.selected = true;
-        selectElement.appendChild(defaultOption);
-
-        // 添加人员选项
-        personList.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person;
-            option.textContent = person;
-            selectElement.appendChild(option);
-        });
-    }
-
-    /**
-     * 生成周报内容输入区域
-     * @param {HTMLElement} container - 容器元素
-     * @param {Array} personList - 人员列表数组
-     */
-    function generateReportSections(container, personList) {
-        // 清空现有内容
-        container.innerHTML = '';
-
-        // 为每个人员生成输入区域
-        personList.forEach((person, index) => {
-            const section = createReportSection(person, index);
-            container.appendChild(section);
-        });
-    }
-
-    /**
-     * 创建单个人员的周报输入区域
-     * @param {string} person - 人员名称
-     * @param {number} index - 索引
-     * @returns {HTMLElement} 生成的DOM元素
-     */
-    function createReportSection(person, index) {
-        const section = document.createElement('div');
-        section.className = 'report-section';
-        section.setAttribute('data-person', person);
-
-        section.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="section-title">
-                        <i class="fa fa-user-circle text-primary mr-2"></i>
-                        ${person}
-                    </h3>
-                </div>
-                <div class="relative">
-                    <textarea
-                        id="reportContent${index + 1}"
-                        name="personalWeeklyReports[${index}].weeklyReportContent"
-                        class="form-input h-40 resize-none"
-                        required
-                        aria-required="true"
-                        aria-label="${person}的周报内容"
-                        maxlength="${CONFIG.MAX_CONTENT_LENGTH}"
-                    ></textarea>
-                    <div class="char-counter">
-                        <span id="charCount${index + 1}">0</span>/${CONFIG.MAX_CONTENT_LENGTH}
+        // 生成个人周报输入区域 —— 每人仅一个输入框
+        function generateReportSections(persons) {
+            elements.reportSections.innerHTML = '';
+            persons.forEach((name, index) => {
+                const section = document.createElement('div');
+                section.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200';
+                section.innerHTML = `
+                    <div class="section-title !mt-0">
+                        <i class="fa fa-user-circle-o mr-2 text-primary"></i>
+                        ${name}
                     </div>
-                </div>
-            `;
-
-        return section;
-    }
-
-    /**
-     * 初始化字符计数监听
-     * @param {number} count - 人员数量
-     */
-    function initCharacterCounters(count) {
-        for (let i = 0; i < count; i++) {
-            const textarea = document.getElementById(`reportContent${i + 1}`);
-            const counter = document.getElementById(`charCount${i + 1}`);
-
-            // 绑定输入事件
-            textarea.addEventListener('input', () => updateCharacterCounter(textarea, counter));
-
-            // 初始化计数显示
-            updateCharacterCounter(textarea, counter);
-        }
-    }
-
-    /**
-     * 更新字符计数显示
-     * @param {HTMLElement} textarea - 文本域元素
-     * @param {HTMLElement} counter - 计数显示元素
-     */
-    function updateCharacterCounter(textarea, counter) {
-        const currentLength = textarea.value.length;
-
-        // 更新计数值
-        counter.textContent = currentLength;
-
-        // 超过最大长度时的样式处理
-        if (currentLength > CONFIG.MAX_CONTENT_LENGTH) {
-            counter.classList.add('char-counter-exceed');
-            textarea.value = textarea.value.substring(0, CONFIG.MAX_CONTENT_LENGTH);
-            counter.textContent = CONFIG.MAX_CONTENT_LENGTH;
-        } else {
-            counter.classList.remove('char-counter-exceed');
-        }
-    }
-
-    /**
-     * 处理表单提交
-     * @param {Event} e - 提交事件对象
-     * @param {Object} elements - DOM元素引用对象
-     */
-    function handleFormSubmit(e, elements) {
-        e.preventDefault();
-
-        // 表单验证
-        if (!elements.form.checkValidity()) {
-            showResponseMessage('error', '提交失败', '请填写所有必填字段');
-            elements.form.reportValidity();
-            return;
-        }
-
-        // 禁用提交按钮防止重复提交
-        setSubmitButtonState(elements.submitBtn, true);
-
-        // 构建表单数据
-        const formData = buildFormData(elements);
-
-        // 发送API请求
-        submitFormData(formData, elements)
-            .catch(error => {
-                showResponseMessage('error', '提交失败', error.message);
-                setSubmitButtonState(elements.submitBtn, false);
-                console.error('Form submit error:', error);
-            });
-    }
-
-    /**
-     * 构建表单数据对象
-     * @param {Object} elements - DOM元素引用对象
-     * @returns {Object} 格式化的表单数据
-     */
-    function buildFormData(elements) {
-        const personList = getCleanPersonList(elements.personListInput.value);
-
-        return {
-            meetingAddress: document.getElementById('meetingAddress').value,
-            host: document.getElementById('host').value,
-            reviewContent: document.getElementById('reviewContent').value,
-            personalWeeklyReports: personList.map((person, index) => ({
-                name: person,
-                weeklyReportContent: document.getElementById(`reportContent${index + 1}`).value
-            }))
-        };
-    }
-
-    /**
-     * 提交表单数据到API
-     * @param {Object} formData - 表单数据
-     * @param {Object} elements - DOM元素引用对象
-     * @returns {Promise} 请求Promise
-     */
-    function submitFormData(formData, elements) {
-        return fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_ENDPOINT}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-            .then(response => handleApiResponse(response, elements))
-            .then(() => {
-                showResponseMessage('success', '周报提交成功！', '已成功生成并下载周报文件。');
-                setSubmitButtonState(elements.submitBtn, false);
-            });
-    }
-
-    /**
-     * 处理API响应
-     * @param {Response} response - 响应对象
-     * @param {Object} elements - DOM元素引用对象
-     * @returns {Promise} 处理后的Promise
-     */
-    function handleApiResponse(response, elements) {
-        if (!response.ok) {
-            return response.text().then(text => {
-                throw new Error(`服务器返回错误 (${response.status}): ${text}`);
-            });
-        }
-
-        // 处理文件下载
-        return processFileDownload(response);
-    }
-
-    /**
-     * 处理文件下载
-     * @param {Response} response - 响应对象
-     * @returns {Promise} 处理后的Promise
-     */
-    function processFileDownload(response) {
-        // 获取文件名
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = 'weekly_report.docx';
-
-        if (contentDisposition) {
-            const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-            if (matches && matches[1]) {
-                let encodedFileName = matches[1].replace(/['"]/g, '');
-                fileName = decodeURIComponent(encodedFileName);
-            }
-        }
-
-        // 下载文件
-        return response.blob().then(blob => {
-            const url = globalThis.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-
-            link.href = url;
-            link.download = fileName;
-            link.click();
-
-            // 释放URL对象
-            setTimeout(() => globalThis.URL.revokeObjectURL(url), 100);
-        });
-    }
-
-    /**
-     * 设置提交按钮状态
-     * @param {HTMLElement} button - 按钮元素
-     * @param {boolean} isLoading - 是否加载中
-     */
-    function setSubmitButtonState(button, isLoading) {
-        if (isLoading) {
-            button.disabled = true;
-            button.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>提交中...';
-        } else {
-            button.disabled = false;
-            button.innerHTML = '<i class="fa fa-paper-plane mr-2"></i>提交周报';
-        }
-    }
-
-    /**
-     * 显示响应消息提示
-     * @param {string} type - 消息类型 (success/error)
-     * @param {string} title - 消息标题
-     * @param {string} message - 消息内容
-     */
-    function showResponseMessage(type, title, message) {
-        const responseMessage = document.getElementById('responseMessage');
-
-        // 确定消息样式
-        const { bgColor, textColor, icon } = getMessageStyle(type);
-
-        // 设置消息内容
-        responseMessage.className = `mt-6 ${bgColor} ${textColor} p-4 rounded-lg shadow-sm`;
-        responseMessage.innerHTML = `
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <i class="fa ${icon} text-xl"></i>
-                    </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium">${title}</h3>
-                        <div class="mt-2 text-sm">
-                            <p>${message}</p>
+                    <div class="mt-2">
+                        <label class="form-label">个人周报内容</label>
+                        <div class="relative">
+                            <span class="input-icon" style="top:10%;"><i class="fa fa-pencil"></i></span>
+                            <textarea name="weeklyReportContent" data-name="${name}" class="form-input h-32 resize-none" placeholder="请填写个人周报内容"></textarea>
                         </div>
                     </div>
-                </div>
-            `;
-
-        // 显示消息
-        responseMessage.classList.remove('hidden');
-
-        // 自动隐藏消息
-        autoHideMessage(responseMessage);
-    }
-
-    /**
-     * 获取消息提示样式
-     * @param {string} type - 消息类型
-     * @returns {Object} 样式配置
-     */
-    function getMessageStyle(type) {
-        if (type === 'success') {
-            return {
-                bgColor: 'bg-success/10',
-                textColor: 'text-success',
-                icon: 'fa-check-circle'
-            };
-        } else {
-            return {
-                bgColor: 'bg-danger/10',
-                textColor: 'text-danger',
-                icon: 'fa-exclamation-circle'
-            };
+                `;
+                elements.reportSections.appendChild(section);
+            });
         }
-    }
 
-    /**
-     * 自动隐藏消息提示
-     * @param {HTMLElement} element - 消息元素
-     */
-    function autoHideMessage(element) {
-        setTimeout(() => {
-            element.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-            setTimeout(() => {
-                element.classList.add('hidden');
-                element.classList.remove('opacity-0');
-            }, 500);
-        }, CONFIG.MESSAGE_DISPLAY_DURATION);
-    }
+        // 重新生成按钮点击事件
+        function regenerateForm() {
+            const persons = parsePersonList();
+            if (persons.length === 0) {
+                showMessage(elements.responseMessage, '请输入有效的人员列表！', 'error');
+                return;
+            }
+            updateHostOptions(persons);
+            generateReportSections(persons);
+            showMessage(elements.responseMessage, '成功生成人员周报表单！', 'success');
+        }
+
+        // 绑定原有按钮事件
+        elements.regenerateBtn.addEventListener('click', regenerateForm);
+
+        // 页面初始化自动生成
+        regenerateForm();
+
+        // ====================== ✅ 唯一修改：修复提交周报响应逻辑 ======================
+        elements.form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            try {
+                elements.submitBtn.disabled = true;
+                elements.submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>提交中...';
+
+                const formData = new FormData(elements.form);
+                const baseData = Object.fromEntries(formData.entries());
+
+                const personalReports = [];
+                const reportTextareas = document.querySelectorAll('textarea[name="weeklyReportContent"]');
+
+                reportTextareas.forEach(textarea => {
+                    personalReports.push({
+                        name: textarea.dataset.name,
+                        weeklyReportContent: textarea.value.trim()
+                    });
+                });
+
+                const submitData = {
+                    meetingAddress: baseData.meetingAddress,
+                    host: baseData.host,
+                    reviewContent: baseData.reviewContent,
+                    personalWeeklyReports: personalReports
+                };
+
+                const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_ENDPOINT}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(submitData)
+                });
+
+                // ========== 修复开始 ==========
+                if (response.ok) {
+                    // 1. 从响应头 Content-Disposition 提取文件名（后端返回优先）
+                    let fileName = "部门周报.docx";
+                    const disposition = response.headers.get('Content-Disposition');
+                    if (disposition) {
+                        try {
+                            // 匹配 filename*=UTF-8''xxx.docx
+                            const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                            if (utf8Match && utf8Match[1]) {
+                                fileName = decodeURIComponent(utf8Match[1]);
+                            } else {
+                                // 兼容 filename="xxx.docx"
+                                const fileNameMatch = disposition.match(/filename="?([^";]+)"?/i);
+                                if (fileNameMatch && fileNameMatch[1]) {
+                                    fileName = fileNameMatch[1];
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('文件名解析失败，使用默认值', e);
+                        }
+                    }
+
+                    // 2. 下载文件
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+
+                    showMessage(elements.responseMessage, '🎉 周报提交成功，文件已下载', 'success');
+                } else {
+                    // 后端返回错误JSON → 读取提示
+                    const err = await response.json();
+                    showMessage(elements.responseMessage, err.message || '提交失败', 'error');
+                }
+                // ========== 修复结束 ==========
+
+            } catch (error) {
+                console.error('提交异常：', error);
+                showMessage(elements.responseMessage, '网络异常，提交失败！', 'error');
+            } finally {
+                elements.submitBtn.disabled = false;
+                elements.submitBtn.innerHTML = '<i class="fa fa-paper-plane mr-2"></i>提交周报';
+            }
+        });
+
+        // ====================== Tab 切换逻辑 ======================
+        elements.tabItems.forEach(tab => {
+            tab.addEventListener('click', function () {
+                elements.tabItems.forEach(item => item.classList.remove('active'));
+                elements.tabContents.forEach(content => content.classList.remove('active'));
+                this.classList.add('active');
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ====================== 个人周报查询逻辑 ======================
+        elements.personalReportContent.addEventListener('input', function() {
+            updateCharCounter(this, elements.personalReportCounter);
+        });
+
+        elements.getPersonalReportBtn.addEventListener('click', async function() {
+            elements.personalReportMessage.classList.add('hidden');
+            elements.personalReportContent.value = '';
+            updateCharCounter(elements.personalReportContent, elements.personalReportCounter);
+
+            const account = elements.userAccountInput.value.trim();
+            const password = elements.userPasswordInput.value.trim();
+
+            if (!account || !password) {
+                showMessage(elements.personalReportMessage, '账号和密码不能为空！', 'error');
+                return;
+            }
+
+            try {
+                elements.getPersonalReportBtn.disabled = true;
+                elements.getPersonalReportBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>加载中...';
+
+                const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.PERSONAL_API_ENDPOINT}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account, password })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    elements.personalReportContent.value = result.data || '暂无个人周报数据';
+                    updateCharCounter(elements.personalReportContent, elements.personalReportCounter);
+                    showMessage(elements.personalReportMessage, '个人周报获取成功！', 'success');
+                } else {
+                    showMessage(elements.personalReportMessage, result.message || '获取个人周报失败，请重试', 'error');
+                }
+            } catch (error) {
+                console.error('获取个人周报失败:', error);
+                showMessage(elements.personalReportMessage, '网络异常，获取个人周报失败！', 'error');
+            } finally {
+                elements.getPersonalReportBtn.disabled = false;
+                elements.getPersonalReportBtn.innerHTML = '<i class="fa fa-search mr-2"></i>获取个人周报';
+            }
+        });
+
+        // ====================== 通用工具函数 ======================
+        function updateCharCounter(textarea, counterElement) {
+            const length = textarea.value.length;
+            const maxLength = CONFIG.MAX_CONTENT_LENGTH;
+            counterElement.textContent = `${length}/${maxLength}`;
+            counterElement.classList.toggle('char-counter-exceed', length > maxLength);
+        }
+
+        function showMessage(element, message, type) {
+            element.className = 'mt-6 p-4 rounded-lg';
+            if (type === 'success') {
+                element.classList.add('bg-success/10', 'text-success', 'border', 'border-success/20');
+            } else if (type === 'error') {
+                element.classList.add('bg-danger/10', 'text-danger', 'border', 'border-danger/20');
+            }
+            element.textContent = message;
+            element.classList.remove('hidden');
+            setTimeout(() => element.classList.add('hidden'), CONFIG.MESSAGE_DISPLAY_DURATION);
+        }
+    });
 </script>
 </body>
 </html>
