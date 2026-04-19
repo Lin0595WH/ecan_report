@@ -1,8 +1,6 @@
 package com.weeklyreport.controller;
 
 
-
-
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.text.CharSequenceUtil;
@@ -180,7 +178,7 @@ public class WeeklyReportController {
         this.addAttendees(document, report);
         this.addSubtitle(document, "会议纪要如下：");
         this.addPersonalReports(document, report);
-
+        this.addReviewContent(document, report);
         return document;
     }
 
@@ -329,6 +327,22 @@ public class WeeklyReportController {
             }
         }
 
+    }
+
+    /**
+     * 添加评审会议纪要
+     *
+     * @param document Word文档对象
+     * @param report   部门周报数据
+     * @return
+     **/
+    private void addReviewContent(XWPFDocument document, DepartmentalWeeklyReport report) {
+        String reviewContent = report.reviewContent();
+        if (CharSequenceUtil.isNotBlank(reviewContent)){
+            this.addPageBreak(document);
+            this.addSubtitle(document, "评审会议纪要");
+            this.addContentParagraph(document, reviewContent);
+        }
     }
 
 
