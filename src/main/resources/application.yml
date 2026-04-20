@@ -1,4 +1,4 @@
 server:
   port: 9123
   servlet:
-    context-path: /api  # 全局请求前缀
+    context-path: /report  # 全局请求前缀

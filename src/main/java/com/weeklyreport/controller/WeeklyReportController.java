@@ -38,7 +38,7 @@ import java.util.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/weekly_report")
+@RequestMapping("/weekly")
 @RequiredArgsConstructor
 public class WeeklyReportController {
 

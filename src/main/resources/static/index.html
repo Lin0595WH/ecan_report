@@ -30,8 +30,8 @@
                     },
                     keyframes: {
                         fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
+                            '0%': {opacity: '0'},
+                            '100%': {opacity: '1'},
                         }
                     }
                 }
@@ -51,9 +51,11 @@
             .input-focus {
                 @apply focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none;
             }
+
             .form-input {
                 @apply w-full px-10 py-3 pr-10 border border-gray-300 rounded-lg input-focus transition-all duration-200;
             }
+
             .form-label {
                 @apply block text-sm font-medium text-gray-700 mb-1;
             }
@@ -62,9 +64,11 @@
             .btn {
                 @apply font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
             }
+
             .btn-primary {
                 @apply btn bg-primary hover:bg-primary/90 text-white;
             }
+
             .btn-section {
                 @apply mb-3;
             }
@@ -73,6 +77,7 @@
             .form-container {
                 @apply bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-4xl mx-auto my-8 animate-fade-in;
             }
+
             .section-title {
                 @apply text-xl font-semibold text-gray-800 mb-4 mt-6 flex items-center;
             }
@@ -81,6 +86,7 @@
             .divider {
                 @apply my-6 border-t border-gray-200 relative;
             }
+
             .divider-text {
                 @apply absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-gray-500 text-sm font-medium;
             }
@@ -91,6 +97,7 @@
                 top: 35%;
                 transform: translateY(-35%);
             }
+
             .input-icon-person {
                 @apply absolute left-0 flex items-center pl-3 text-gray-500 pointer-events-none;
                 top: 35%;
@@ -115,6 +122,7 @@
             .char-counter {
                 @apply absolute bottom-2 right-2 text-xs text-gray-500;
             }
+
             .char-counter-exceed {
                 @apply text-danger;
             }
@@ -123,12 +131,15 @@
             .tab-item {
                 @apply px-6 py-3 font-medium text-gray-600 cursor-pointer transition-all border-b-2 border-transparent;
             }
+
             .tab-item.active {
                 @apply text-primary border-primary font-semibold;
             }
+
             .tab-content {
                 @apply hidden;
             }
+
             .tab-content.active {
                 @apply block animate-fade-in;
             }
@@ -323,6 +334,7 @@
 
             <!-- 获取个人周报按钮 -->
             <div class="btn-section">
+                <p class="text-xs text-danger mb-2">系统不会保存您的账号密码，仅用于获取登录认证</p>
                 <button
                         type="button"
                         id="getPersonalReportBtn"
@@ -482,7 +494,7 @@
 
                 const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.API_ENDPOINT}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(submitData)
                 });
 
@@ -549,14 +561,14 @@
         });
 
         // ====================== 个人周报查询逻辑 ======================
-        elements.getPersonalReportBtn.addEventListener('click', async function() {
+        elements.getPersonalReportBtn.addEventListener('click', async function () {
             elements.personalReportMessage.classList.add('hidden');
             elements.personalReportContent.value = '';
 
-            const account = elements.userAccountInput.value.trim();
+            const username = elements.userAccountInput.value.trim();
             const password = elements.userPasswordInput.value.trim();
 
-            if (!account || !password) {
+            if (!username || !password) {
                 showMessage(elements.personalReportMessage, '账号和密码不能为空！', 'error');
                 return;
             }
@@ -567,20 +579,43 @@
 
                 const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.PERSONAL_API_ENDPOINT}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ account, password })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
                 });
 
                 const result = await response.json();
-                if (response.ok && result.success) {
-                    elements.personalReportContent.value = result.data || '暂无个人周报数据';
-                    showMessage(elements.personalReportMessage, '个人周报获取成功！', 'success');
+                // 后端code=0表示成功
+                if (response.ok && result.code === 0) {
+                    // 1. 获取周报内容并回显
+                    const reportContent = result.data?.weeklyReportContent || '暂无个人周报数据';
+                    elements.personalReportContent.value = reportContent;
+
+                    // 2. 取消文本框不可编辑状态
+                    elements.personalReportContent.removeAttribute('readonly');
+
+                    // 3. 复制内容到剪贴板
+                    try {
+                        await navigator.clipboard.writeText(reportContent);
+                        // 4. 显示成功提示（包含剪贴板复制成功）
+                        showMessage(elements.personalReportMessage, '周报获取成功，已自动粘贴至剪贴板！', 'success');
+                    } catch (clipboardError) {
+                        console.error('剪贴板复制失败:', clipboardError);
+                        // 剪贴板复制失败时仍提示获取成功，仅说明复制失败
+                        showMessage(elements.personalReportMessage, '周报获取成功，但剪贴板复制失败，请手动复制！', 'success');
+                    }
                 } else {
                     showMessage(elements.personalReportMessage, result.message || '获取个人周报失败，请重试', 'error');
+                    // 失败时恢复文本框只读状态（可选，根据需求）
+                    elements.personalReportContent.setAttribute('readonly', 'readonly');
                 }
             } catch (error) {
                 console.error('获取个人周报失败:', error);
                 showMessage(elements.personalReportMessage, '网络异常，获取个人周报失败！', 'error');
+                // 异常时恢复文本框只读状态（可选，根据需求）
+                elements.personalReportContent.setAttribute('readonly', 'readonly');
             } finally {
                 elements.getPersonalReportBtn.disabled = false;
                 elements.getPersonalReportBtn.innerHTML = '<i class="fa fa-search mr-2"></i>获取个人周报';
