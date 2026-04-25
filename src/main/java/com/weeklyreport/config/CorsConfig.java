@@ -14,18 +14,19 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/report/**")
-                .allowedOrigins("https://ecan-report.linwh.top")  // 允许的前端域名
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
+        registry.addMapping("/**") // 匹配所有接口
+                .allowedOriginPatterns("*") // 关键修复：用这个而不是 allowedOrigins
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 加上 OPTIONS 很重要
                 .allowedHeaders("*")
                 .exposedHeaders(
-                        "Content-Disposition",  // 文件下载
-                        "Content-Length",       // 内容长度
-                        "Content-Type",         // 内容类型
-                        "Authorization",        // 认证
-                        "X-Requested-With",     // AJAX请求标识
-                        "X-Total-Count"         // 分页总数
+                        "Content-Disposition",
+                        "Content-Length",
+                        "Content-Type",
+                        "Authorization",
+                        "X-Requested-With",
+                        "X-Total-Count"
                 )
-                .allowCredentials(true);
+                .allowCredentials(true)
+                .maxAge(3600); // 预检缓存
     }
 }

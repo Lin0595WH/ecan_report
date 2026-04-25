@@ -11,6 +11,7 @@ import com.weeklyreport.entity.PersonalWeeklyReport;
 import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
+import com.weeklyreport.util.PushIpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,13 +61,16 @@ public class WeeklyReportController {
      * @return 生成的Word文档响应流，或错误信息
      */
     @PostMapping
-    public ResponseEntity<?> submitWeeklyReport(@RequestBody DepartmentalWeeklyReport report) {
+    public ResponseEntity<?> submitWeeklyReport(@RequestBody DepartmentalWeeklyReport report, HttpServletRequest request) {
         try {
             // 参数校验
             this.validateReport(report);
 
             // 日志记录
             this.logReportData(report);
+
+            // 发送推送通知
+            this.sendPushNotification(report, request);
 
             // 生成并返回文档
             return this.generateDocxResponse(report);
@@ -123,6 +128,22 @@ public class WeeklyReportController {
             String preview = CharSequenceUtil.maxLength(pr.weeklyReportContent(), 50);
             log.info("- {}: {}", pr.name(), preview);
         });
+    }
+
+    /**
+     * 发送推送通知
+     *
+     * @param report  部门周报数据
+     * @param request HttpServletRequest
+     */
+    private void sendPushNotification(DepartmentalWeeklyReport report, HttpServletRequest request) {
+        try {
+            String ip = PushIpUtil.getClientIp(request);
+            String region = PushIpUtil.getIpRegion(ip);
+            PushIpUtil.sendWechatPush("部门周报文件生成", ip + "\n" + region);
+        } catch (Exception e) {
+            log.error("推送通知失败", e);
+        }
     }
 
     /**

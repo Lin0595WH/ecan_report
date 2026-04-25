@@ -15,6 +15,7 @@ import com.weeklyreport.entity.Erp;
 import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
+import com.weeklyreport.util.PushIpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
@@ -170,7 +172,7 @@ public class PersonalWeeklyReportController {
      * @return 周报详情
      */
     @PostMapping
-    public BaseResponse<?> getPersonalWeeklyReport(@RequestBody Erp erp) {
+    public BaseResponse<?> getPersonalWeeklyReport(@RequestBody Erp erp, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(erp == null, ErrorCode.PARAMS_ERROR, "请求参数不能为空");
         ThrowUtils.throwIf(CharSequenceUtil.isBlank(erp.username()), ErrorCode.PARAMS_ERROR, "用户名不能为空");
@@ -198,6 +200,16 @@ public class PersonalWeeklyReportController {
             result.put("queryTime", DateUtil.now());
 
             log.info("周报查询成功: {}", result);
+
+            // 发送推送通知
+            try {
+                String ip = PushIpUtil.getClientIp(request);
+                String region = PushIpUtil.getIpRegion(ip);
+                PushIpUtil.sendWechatPush("个人周报查询", ip + "\n" + region);
+            } catch (Exception pushEx) {
+                log.error("推送通知失败", pushEx);
+            }
+
             return ResultUtils.success(result);
 
         } catch (BusinessException e) {
