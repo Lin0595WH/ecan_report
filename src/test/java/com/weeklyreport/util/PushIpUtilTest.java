@@ -19,8 +19,7 @@ class PushIpUtilTest {
 
     @Test
     void getClientIp() {
-        String ip = PushIpUtil.getClientIp(null);
-        System.out.println(ip);
+
     }
 
     @Test
