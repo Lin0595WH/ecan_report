@@ -140,7 +140,7 @@ public class WeeklyReportController {
         try {
             String ip = PushIpUtil.getClientIp(request);
             String region = PushIpUtil.getIpRegion(ip);
-            PushIpUtil.sendWechatPush("部门周报文件生成", ip + "\n" + region);
+            PushIpUtil.sendWechatPush("部门周报文件生成", "IP地址：" + ip + "\n" + region);
         } catch (Exception e) {
             log.error("推送通知失败", e);
         }

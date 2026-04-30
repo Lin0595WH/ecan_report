@@ -24,7 +24,7 @@ class PushIpUtilTest {
 
     @Test
     void getIpRegion() {
-        String region = PushIpUtil.getIpRegion("127.0.0.1");
+        String region = PushIpUtil.getIpRegion("59.56.182.79");
         System.out.println(region);
     }
 }

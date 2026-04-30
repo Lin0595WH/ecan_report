@@ -205,7 +205,7 @@ public class PersonalWeeklyReportController {
             try {
                 String ip = PushIpUtil.getClientIp(request);
                 String region = PushIpUtil.getIpRegion(ip);
-                PushIpUtil.sendWechatPush("个人周报查询", ip + "\n" + region);
+                PushIpUtil.sendWechatPush("个人周报查询", "IP地址："+ip + "\n" + region);
             } catch (Exception pushEx) {
                 log.error("推送通知失败", pushEx);
             }

@@ -1,6 +1,7 @@
 package com.weeklyreport.util;
 
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.core.text.StrPool;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
@@ -10,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Spliterators;
 
 
 /**
@@ -20,7 +23,7 @@ public class PushIpUtil {
     // ====================== 配置项 ======================
     private static final String TOKEN = "ctwpaCtwfMCh1E3KhsuXxlAZm";
     private static final String PUSH_URL = "https://wx.xtuis.cn/" + TOKEN + ".send";
-    private static final String IP_REGION_API = "https://ip.useragentinfo.com/json?ip=";
+    private static final String IP_REGION_API = "https://www.cz88.net/api/cz88/ip/geo?ip=";
     // ===================================================
 
     /**
@@ -37,7 +40,7 @@ public class PushIpUtil {
     }
 
     /**
-     *【手动实现】获取客户端真实IP（兼容所有Hutool、支持Nginx）
+     * 【手动实现】获取客户端真实IP（兼容所有Hutool、支持Nginx）
      * 替代 Hutool 的 NetUtil.getClientIp
      */
     public static String getClientIp(HttpServletRequest request) {
@@ -71,12 +74,19 @@ public class PushIpUtil {
             if (json.getInt("code") != 200) {
                 return "未知地区";
             }
-
-            String province = json.getStr("province");
-            String city = json.getStr("city");
-            String district = json.getStr("district");
-
-            return province + "-" + city + "-" + district;
+            String dataStr = json.getStr("data");
+            Map<String, String> data = JSONUtil.toBean(dataStr, Map.class);
+            if (data == null) {
+                return "未知地区";
+            }
+            String country = data.get("country");
+            String province = data.get("province");
+            String city = data.get("city");
+            String districts = data.get("districts");
+            String isp = data.get("isp");
+            String region = String.format("归属地：%s-%s-%s-%s", country, province, city, districts);
+            String carrier = String.format("运营商：%s", isp);
+            return region + StrPool.LF + carrier;
         } catch (Exception e) {
             return "获取地区失败";
         }
