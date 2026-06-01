@@ -15,7 +15,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("http://weekly_report.coderlin.me")  // 允许的前端域名
+                .allowedOrigins("http://weekly_report.coderlin.me", "http://38.76.189.180:9192")  // 允许的前端域名
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("*")
                 .exposedHeaders(
