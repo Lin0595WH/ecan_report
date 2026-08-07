@@ -2,7 +2,9 @@ package com.weeklyreport.controller;
 
 
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.lang.Pair;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -15,7 +17,8 @@ import com.weeklyreport.entity.Erp;
 import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
-import com.weeklyreport.util.PushIpUtil;
+import com.weeklyreport.util.IPUtil;
+import com.weeklyreport.util.PushUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
@@ -63,7 +67,7 @@ public class PersonalWeeklyReportController {
             {
                   "dataSetId": "07794dcb4e214e33a07ef96b2594268a",
                   "columns": [
-                     
+            
                   ],
                   "formType": "",
                   "allTablesFlag": true,
@@ -74,33 +78,33 @@ public class PersonalWeeklyReportController {
                       "sortField": ""
                   },
                   "searchFileNames": [
-                     
+            
                   ],
                   "searchFileValues": [
-                     
+            
                   ],
                   "searchRules": [
-                     
+            
                   ],
                   "sumFields": [
-                     
+            
                   ],
                   "avgFields": [
-                     
+            
                   ],
                   "maxFields": [
-                     
+            
                   ],
                   "minFields": [
-                     
+            
                   ],
                   "countFields": [
-                     
+            
                   ],
                   "allSearchColsFlag": false,
                   "allSearchColsValue": "",
                   "allSearchCols": [
-                     
+            
                   ],
                   "componentKeyName": "主表格",
                   "args": "0!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@null!@assigntome!@task_id!@desc",
@@ -182,7 +186,10 @@ public class PersonalWeeklyReportController {
 
         try {
             // 1. 登录获取token
-            String token = this.login(erp.username(), erp.password());
+            Pair<String, String> loginResult = this.login(erp.username(), erp.password());
+            ThrowUtils.throwIf(loginResult == null, ErrorCode.OPERATION_ERROR, "登录失败");
+            String token = loginResult.getKey();
+            String trueName = loginResult.getValue();
             ThrowUtils.throwIf(token == null, ErrorCode.PARAMS_ERROR, "登录失败，请检查用户名密码");
 
             // 2. 请求任务列表
@@ -201,11 +208,18 @@ public class PersonalWeeklyReportController {
 
             log.info("周报查询成功: {}", result);
 
-            // 发送推送通知
+            // 发送推送通知（使用 IPUtil 获取 IP 信息，PushUtil 推送）
             try {
-                String ip = PushIpUtil.getClientIp(request);
-                String region = PushIpUtil.getIpRegion(ip);
-                PushIpUtil.sendWechatPush("个人周报查询", "IP地址："+ip + "\n" + region);
+                IPUtil.IpInfo ipInfo = IPUtil.getIpInfo(request);
+                String title = trueName + " 个人周报查询";
+                String contentTemplate = """
+                        ip：{}
+                        运营商：{}
+                        城市：{}
+                        原始地区：{}
+                        """;
+                String content = StrUtil.format(contentTemplate, ipInfo.ip(), ipInfo.isp(), ipInfo.city(), ipInfo.rawRegion());
+                PushUtil.push(title, content);
             } catch (Exception pushEx) {
                 log.error("推送通知失败", pushEx);
             }
@@ -228,10 +242,9 @@ public class PersonalWeeklyReportController {
      * @param password 密码
      * @return 登录成功返回token，失败返回null
      */
-    private String login(String username, String password) {
+    private Pair<String, String> login(String username, String password) {
         String businessTime = DateUtil.now().formatted("yyyy-MM-dd");
         log.info("当前业务时间：{}", businessTime);
-
         String loginUrl = BASE_API_URL + "api/login";
         HttpRequest request = HttpRequest.post(loginUrl)
                 .header("Pragma", "no-cache")
@@ -247,7 +260,6 @@ public class PersonalWeeklyReportController {
                 .form("businessTime", businessTime)
                 .form("businessOfficeId", "10000")
                 .timeout(10000);
-
         try (HttpResponse response = request.execute()) {
             if (response.isOk()) {
                 String responseBody = response.body();
@@ -264,9 +276,12 @@ public class PersonalWeeklyReportController {
                     return null;
                 }
                 String token = dataObj.getStr("token");
+                String userJson = dataObj.getStr("user");
+                JSONObject userObj = JSONUtil.parseObj(userJson);
+                String trueName = userObj.getStr("trueName");
                 if (token != null && !token.isEmpty()) {
                     log.info("登录成功，Token：{}", token);
-                    return token;
+                    return Pair.of(token, trueName);
                 } else {
                     log.error("登录响应中未找到token字段");
                     return null;

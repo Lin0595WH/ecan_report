@@ -66,6 +66,13 @@
             <artifactId>poi</artifactId>
             <version>5.4.1</version>
         </dependency>
+
+        <!-- ip2region：离线 IP 归属地 / 运营商查询（xdb 数据文件需单独放到 resources 下） -->
+        <dependency>
+            <groupId>org.lionsoul</groupId>
+            <artifactId>ip2region</artifactId>
+            <version>3.3.7</version>
+        </dependency>
     </dependencies>
 
     <build>

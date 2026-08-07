@@ -5,13 +5,16 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 
+import cn.hutool.core.util.StrUtil;
 import com.weeklyreport.common.ResultUtils;
 import com.weeklyreport.entity.DepartmentalWeeklyReport;
 import com.weeklyreport.entity.PersonalWeeklyReport;
 import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
+import com.weeklyreport.util.IPUtil;
 import com.weeklyreport.util.PushIpUtil;
+import com.weeklyreport.util.PushUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -138,9 +142,16 @@ public class WeeklyReportController {
      */
     private void sendPushNotification(DepartmentalWeeklyReport report, HttpServletRequest request) {
         try {
-            String ip = PushIpUtil.getClientIp(request);
-            String region = PushIpUtil.getIpRegion(ip);
-            PushIpUtil.sendWechatPush("部门周报文件生成", "IP地址：" + ip + "\n" + region);
+            IPUtil.IpInfo ipInfo = IPUtil.getIpInfo(request);
+            String title = "部门周报文件生成";
+            String contentTemplate = """
+                    ip：{}
+                    运营商：{}
+                    城市：{}
+                    原始地区：{}
+                    """;
+            String content = StrUtil.format(contentTemplate, ipInfo.ip(), ipInfo.isp(), ipInfo.city(), ipInfo.rawRegion());
+            PushUtil.push(title, content);
         } catch (Exception e) {
             log.error("推送通知失败", e);
         }
@@ -359,7 +370,7 @@ public class WeeklyReportController {
      **/
     private void addReviewContent(XWPFDocument document, DepartmentalWeeklyReport report) {
         String reviewContent = report.reviewContent();
-        if (CharSequenceUtil.isNotBlank(reviewContent)){
+        if (CharSequenceUtil.isNotBlank(reviewContent)) {
             this.addPageBreak(document);
             this.addSubtitle(document, "评审会议纪要");
             this.addContentParagraph(document, reviewContent);
