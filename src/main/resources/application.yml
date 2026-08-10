@@ -2,3 +2,27 @@ server:
   port: 9123
   servlet:
     context-path: /report  # 全局请求前缀
+
+# ===== 业务配置（均可被环境变量 / 配置中心覆盖；默认值与历史硬编码一致） =====
+pushplus:
+  token: b1bfadb9af6749d5af42cba22bafe282
+
+erp:
+  base-url: http://220.250.40.152:9392/
+
+report:
+  host-name: 林敦龙
+  meeting-title: HRP开发三部周例会会议纪要
+  file-prefix: hrp开发三部部门例会会议纪要_
+
+app:
+  security:
+    auth-enabled: true    # 独立开关：true 时校验请求头 X-Api-Token（与限流无关）
+    api-token: "182719e01793d3ded2781c820cf0da7657b02d37"  # SHA-1("ecan-weekly-report")；启用鉴权时必须非空，否则全部 401。生产建议用环境变量 APP_SECURITY_API_TOKEN 覆盖
+  rate-limit:
+    enabled: false        # 独立开关：true 时启用 IP 限流（与鉴权无关）
+    personal-qps: 10      # /personal 每 IP 每秒最大请求数（固定 1s 窗口；0 表示关闭限流）
+    weekly-qps: 5         # /weekly 每 IP 每秒最大请求数（docx 生成较重，略低；0 表示关闭）
+  encryption:
+    enabled: true         # 独立开关：true 时启用请求/响应双向加密（RSA+AES 信封）。启用后前端须配套改造并先请求 /report/public-key
+    rsa-key-size: 2048    # 服务端 RSA 密钥长度（仅存内存，重启即轮换）

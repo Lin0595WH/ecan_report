@@ -5,21 +5,16 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 
-import cn.hutool.core.util.StrUtil;
-import com.weeklyreport.common.ResultUtils;
 import com.weeklyreport.entity.DepartmentalWeeklyReport;
 import com.weeklyreport.entity.PersonalWeeklyReport;
-import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
 import com.weeklyreport.util.IPUtil;
-import com.weeklyreport.util.PushIpUtil;
 import com.weeklyreport.util.PushUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.ContentDisposition;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,14 +22,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -59,35 +56,43 @@ public class WeeklyReportController {
     private final String CONTEXT_FONT = "SimSun";
 
     /**
-     * 提交周报数据并生成会议纪要文档
+     * 参会固定人员（配置外提，默认值与历史一致）
+     */
+    @Value("${report.host-name:林敦龙}")
+    private String hostName;
+
+    /**
+     * 会议纪要标题（配置外提，默认值与历史一致）
+     */
+    @Value("${report.meeting-title:HRP开发三部周例会会议纪要}")
+    private String meetingTitle;
+
+    /**
+     * 导出文件名前缀（配置外提，默认值与历史一致）
+     */
+    @Value("${report.file-prefix:hrp开发三部部门例会会议纪要_}")
+    private String filePrefix;
+
+    /**
+     * 提交周报数据并生成会议纪要文档。
+     * 参数校验 / 文档生成等异常统一交由 GlobalExceptionHandler 处理。
      *
      * @param report 部门周报数据，包含会议信息和个人周报内容
-     * @return 生成的Word文档响应流，或错误信息
+     * @return 生成的 Word 文档响应流
      */
     @PostMapping
-    public ResponseEntity<?> submitWeeklyReport(@RequestBody DepartmentalWeeklyReport report, HttpServletRequest request) {
-        try {
-            // 参数校验
-            this.validateReport(report);
+    public ResponseEntity<StreamingResponseBody> submitWeeklyReport(@RequestBody DepartmentalWeeklyReport report, HttpServletRequest request) {
+        // 参数校验（失败抛 BusinessException → 全局异常处理器返回 400）
+        this.validateReport(report);
 
-            // 日志记录
-            this.logReportData(report);
+        // 日志记录
+        this.logReportData(report);
 
-            // 发送推送通知
-            this.sendPushNotification(report, request);
+        // 发送推送通知（失败不影响主流程）
+        this.sendPushNotification(report, request);
 
-            // 生成并返回文档
-            return this.generateDocxResponse(report);
-
-        } catch (BusinessException e) {
-            log.error("业务异常: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ResultUtils.error(ErrorCode.PARAMS_ERROR, e.getMessage()));
-        } catch (Exception e) {
-            log.error("系统异常", e);
-            return ResponseEntity.status(500)
-                    .body(ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统内部异常，请联系管理员"));
-        }
+        // 生成并返回文档流
+        return this.generateDocxResponse(report);
     }
 
     /**
@@ -135,7 +140,7 @@ public class WeeklyReportController {
     }
 
     /**
-     * 发送推送通知
+     * 发送推送通知（统一使用 PushUtil.pushIpInfo，避免重复拼接）
      *
      * @param report  部门周报数据
      * @param request HttpServletRequest
@@ -143,71 +148,67 @@ public class WeeklyReportController {
     private void sendPushNotification(DepartmentalWeeklyReport report, HttpServletRequest request) {
         try {
             IPUtil.IpInfo ipInfo = IPUtil.getIpInfo(request);
-            String title = "部门周报文件生成";
-            String contentTemplate = """
-                    ip：{}
-                    运营商：{}
-                    城市：{}
-                    原始地区：{}
-                    """;
-            String content = StrUtil.format(contentTemplate, ipInfo.ip(), ipInfo.isp(), ipInfo.city(), ipInfo.rawRegion());
-            PushUtil.push(title, content);
+            PushUtil.pushIpInfo("部门周报文件生成", ipInfo);
         } catch (Exception e) {
             log.error("推送通知失败", e);
         }
     }
 
     /**
-     * 生成Word文档响应流
+     * 生成 Word 文档响应流（流式写出，避免整篇文档驻留内存）。
      *
      * @param report 部门周报数据
-     * @return 包含Word文档的响应实体
-     * @throws IOException 当生成文档过程中发生IO异常时抛出
+     * @return 包含 Word 文档的响应实体（StreamingResponseBody）
      */
-    private ResponseEntity<InputStreamResource> generateDocxResponse(DepartmentalWeeklyReport report) {
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            XWPFDocument document = this.createDocxDocument(report);
-            document.write(bos);
+    private ResponseEntity<StreamingResponseBody> generateDocxResponse(DepartmentalWeeklyReport report) {
+        Date friday = this.getCurrentWeekFriday();
+        String fileName = this.generateDocxFileName(friday);
 
-            String fileName = this.generateDocxFileName();
-            // 对文件名进行 UTF-8 URL 编码（仅保留 %XX 格式）
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name());
-            HttpHeaders headers = new HttpHeaders();
-            // 设置正确的 docx 类型（比 APPLICATION_OCTET_STREAM 更精确）
-            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
-
-            // 手动构建 Content-Disposition 响应头，避免 MIME 编码
-            String contentDisposition = String.format(
-                    "attachment; filename=\"%s\"; filename*=UTF-8''%s",
-                    encodedFileName,  // 兼容旧浏览器（纯 URL 编码）
-                    encodedFileName   // 现代浏览器优先解析（显式 UTF-8 声明）
-            );
-            headers.set(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
-
-            headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-            headers.add(HttpHeaders.PRAGMA, "no-cache");
-            headers.add(HttpHeaders.EXPIRES, "0");
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .contentLength(bos.size())
-                    .body(new InputStreamResource(new ByteArrayInputStream(bos.toByteArray())));
-        } catch (IOException e) {
-            throw new RuntimeException("生成周报文档失败", e);
+        // 对文件名进行 UTF-8 URL 编码（仅保留 %XX 格式）
+        String encodedFileName;
+        try {
+            encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            encodedFileName = fileName;
         }
+        HttpHeaders headers = new HttpHeaders();
+        // 设置正确的 docx 类型（比 APPLICATION_OCTET_STREAM 更精确）
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+
+        // 手动构建 Content-Disposition 响应头，避免 MIME 编码
+        String contentDisposition = String.format(
+                "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+                encodedFileName,  // 兼容旧浏览器（纯 URL 编码）
+                encodedFileName   // 现代浏览器优先解析（显式 UTF-8 声明）
+        );
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
+
+        headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+        headers.add(HttpHeaders.PRAGMA, "no-cache");
+        headers.add(HttpHeaders.EXPIRES, "0");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(outputStream -> {
+                    // 流式写出：文档直接写入响应流，不缓存整篇到内存
+                    try (XWPFDocument document = this.createDocxDocument(report, friday)) {
+                        document.write(outputStream);
+                    }
+                });
     }
 
     /**
      * 创建Word文档对象并填充内容
      *
      * @param report 部门周报数据
+     * @param friday 当前周周五日期（仅计算一次，向下传递）
      * @return 填充好内容的Word文档对象
      */
-    private XWPFDocument createDocxDocument(DepartmentalWeeklyReport report) {
+    private XWPFDocument createDocxDocument(DepartmentalWeeklyReport report, Date friday) {
         XWPFDocument document = new XWPFDocument();
         this.addTitle(document);
-        this.addMeetingInfo(document, report);
-        this.addAttendees(document, report);
+        this.addMeetingInfo(document, report, friday);
+        this.addAttendees(document, report, friday);
         this.addSubtitle(document, "会议纪要如下：");
         this.addPersonalReports(document, report);
         this.addReviewContent(document, report);
@@ -223,7 +224,7 @@ public class WeeklyReportController {
         XWPFParagraph para = document.createParagraph();
         para.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun run = para.createRun();
-        run.setText("HRP开发三部周例会会议纪要");
+        run.setText(this.meetingTitle);
         run.setFontFamily(TITLE_FONT);
         run.setFontSize(22);
         run.setBold(true);
@@ -234,10 +235,9 @@ public class WeeklyReportController {
      *
      * @param document Word文档对象
      * @param report   部门周报数据
+     * @param friday   当前周周五日期
      */
-    private void addMeetingInfo(XWPFDocument document, DepartmentalWeeklyReport report) {
-        // 获取当周周五日期
-        Date friday = this.getCurrentWeekFriday();
+    private void addMeetingInfo(XWPFDocument document, DepartmentalWeeklyReport report, Date friday) {
         String dateStr = DateUtil.format(friday, "yyyy年MM月dd日");
 
         this.addParagraph(document, "会议时间：" + dateStr + "（星期五）");
@@ -249,17 +249,16 @@ public class WeeklyReportController {
      *
      * @param document Word文档对象
      * @param report   部门周报数据
+     * @param friday   当前周周五日期（作为编写时间）
      */
-    private void addAttendees(XWPFDocument document, DepartmentalWeeklyReport report) {
+    private void addAttendees(XWPFDocument document, DepartmentalWeeklyReport report, Date friday) {
         String attendees = CharSequenceUtil.join("、",
                 report.personalWeeklyReports().stream().map(PersonalWeeklyReport::name).toArray());
 
         this.addParagraph(document, "出席人员：");
-        this.addParagraph(document, "\t林敦龙、" + attendees);
+        this.addParagraph(document, "\t" + this.hostName + "、" + attendees);
         this.addParagraph(document, "主持人（编写人）：" + report.host());
 
-        // 获取当周周五日期作为编写时间
-        Date friday = this.getCurrentWeekFriday();
         this.addParagraph(document, "编写时间：" + DateUtil.format(friday, "yyyy年MM月dd日"));
     }
 
@@ -366,7 +365,6 @@ public class WeeklyReportController {
      *
      * @param document Word文档对象
      * @param report   部门周报数据
-     * @return
      **/
     private void addReviewContent(XWPFDocument document, DepartmentalWeeklyReport report) {
         String reviewContent = report.reviewContent();
@@ -435,29 +433,23 @@ public class WeeklyReportController {
     /**
      * 生成文档文件名
      *
+     * @param friday 当前周周五日期
      * @return 格式化后的文件名，包含日期信息
      */
-    private String generateDocxFileName() {
-        // 获取当周周五日期
-        Date friday = this.getCurrentWeekFriday();
-        return "hrp开发三部部门例会会议纪要_" +
+    private String generateDocxFileName(Date friday) {
+        return this.filePrefix +
                 DateUtil.format(friday, "yyyyMMdd") + ".docx";
     }
 
     /**
-     * 获取当前周的星期五日期
+     * 获取当前周的星期五日期（java.time 显式计算，边界明确）。
+     * 语义等价于原 endOfWeek - 2，但对周日跨周稳定。
      *
-     * @return 星期五的Date对象
+     * @return 星期五的 Date 对象
      */
     private Date getCurrentWeekFriday() {
-        // 获取当前日期
-        Date today = new Date();
-
-        // 获取当前周的最后一天（星期天）
-        Date endOfWeek = DateUtil.endOfWeek(today);
-
-        // 从星期天减去2天得到星期五
-        return DateUtil.offsetDay(endOfWeek, -2);
+        LocalDate friday = LocalDate.now().with(DayOfWeek.FRIDAY);
+        return Date.from(friday.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 
     /**

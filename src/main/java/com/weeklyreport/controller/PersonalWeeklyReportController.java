@@ -4,7 +4,6 @@ package com.weeklyreport.controller;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Pair;
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -14,13 +13,13 @@ import cn.hutool.json.JSONUtil;
 import com.weeklyreport.common.BaseResponse;
 import com.weeklyreport.common.ResultUtils;
 import com.weeklyreport.entity.Erp;
-import com.weeklyreport.exception.BusinessException;
 import com.weeklyreport.exception.ErrorCode;
 import com.weeklyreport.exception.ThrowUtils;
 import com.weeklyreport.util.IPUtil;
 import com.weeklyreport.util.PushUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,9 +50,10 @@ import java.util.Map;
 public class PersonalWeeklyReportController {
 
     /**
-     * ERP基础URL
+     * ERP 基础 URL（配置外提，默认值与历史一致）
      */
-    private static final String BASE_API_URL = "http://220.250.40.152:9392/";
+    @Value("${erp.base-url:http://220.250.40.152:9392/}")
+    private String baseApiUrl;
 
     /**
      * 外部配置文件路径
@@ -184,55 +184,38 @@ public class PersonalWeeklyReportController {
 
         log.info("收到周报查询请求，用户名: {}", erp.username());
 
+        // 1. 登录获取token（失败由 ThrowUtils 抛 BusinessException，统一交全局异常处理器响应）
+        Pair<String, String> loginResult = this.login(erp.username(), erp.password());
+        ThrowUtils.throwIf(loginResult == null, ErrorCode.OPERATION_ERROR, "登录失败");
+        String token = loginResult.getKey();
+        String trueName = loginResult.getValue();
+        ThrowUtils.throwIf(token == null, ErrorCode.PARAMS_ERROR, "登录失败，请检查用户名密码");
+
+        // 2. 请求任务列表
+        String taskResponse = this.requestTaskList(token);
+        ThrowUtils.throwIf(taskResponse == null, ErrorCode.SYSTEM_ERROR, "获取任务列表失败");
+
+        // 3. 处理响应内容，提取本周任务
+        String workContent = this.getWorkContent(taskResponse);
+        workContent = CharSequenceUtil.isBlank(workContent) ? "无" : workContent;
+        String weeklyReportContent = WEEKLY_REPORT_TEMPLATE.replace("#{workContent}", workContent);
+        // 4. 返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("username", erp.username());
+        result.put("weeklyReportContent", weeklyReportContent);
+        result.put("queryTime", DateUtil.now());
+
+        log.info("周报查询成功: {}", result);
+
+        // 发送推送通知（使用 IPUtil 获取 IP 信息，PushUtil 推送；失败不影响主流程）
         try {
-            // 1. 登录获取token
-            Pair<String, String> loginResult = this.login(erp.username(), erp.password());
-            ThrowUtils.throwIf(loginResult == null, ErrorCode.OPERATION_ERROR, "登录失败");
-            String token = loginResult.getKey();
-            String trueName = loginResult.getValue();
-            ThrowUtils.throwIf(token == null, ErrorCode.PARAMS_ERROR, "登录失败，请检查用户名密码");
-
-            // 2. 请求任务列表
-            String taskResponse = this.requestTaskList(token);
-            ThrowUtils.throwIf(taskResponse == null, ErrorCode.SYSTEM_ERROR, "获取任务列表失败");
-
-            // 3. 处理响应内容，提取本周任务
-            String workContent = this.getWorkContent(taskResponse);
-            workContent = CharSequenceUtil.isBlank(workContent) ? "无" : workContent;
-            String weeklyReportContent = WEEKLY_REPORT_TEMPLATE.replace("#{workContent}", workContent);
-            // 4. 返回结果
-            Map<String, Object> result = new HashMap<>();
-            result.put("username", erp.username());
-            result.put("weeklyReportContent", weeklyReportContent);
-            result.put("queryTime", DateUtil.now());
-
-            log.info("周报查询成功: {}", result);
-
-            // 发送推送通知（使用 IPUtil 获取 IP 信息，PushUtil 推送）
-            try {
-                IPUtil.IpInfo ipInfo = IPUtil.getIpInfo(request);
-                String title = trueName + " 个人周报查询";
-                String contentTemplate = """
-                        ip：{}
-                        运营商：{}
-                        城市：{}
-                        原始地区：{}
-                        """;
-                String content = StrUtil.format(contentTemplate, ipInfo.ip(), ipInfo.isp(), ipInfo.city(), ipInfo.rawRegion());
-                PushUtil.push(title, content);
-            } catch (Exception pushEx) {
-                log.error("推送通知失败", pushEx);
-            }
-
-            return ResultUtils.success(result);
-
-        } catch (BusinessException e) {
-            log.error("业务异常: {}", e.getMessage());
-            return ResultUtils.error(e.getCode(), e.getMessage());
-        } catch (Exception e) {
-            log.error("系统异常", e);
-            return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统内部异常，请联系管理员");
+            IPUtil.IpInfo ipInfo = IPUtil.getIpInfo(request);
+            PushUtil.pushIpInfo(trueName + " 个人周报查询", ipInfo);
+        } catch (Exception pushEx) {
+            log.error("推送通知失败", pushEx);
         }
+
+        return ResultUtils.success(result);
     }
 
     /**
@@ -245,7 +228,7 @@ public class PersonalWeeklyReportController {
     private Pair<String, String> login(String username, String password) {
         String businessTime = DateUtil.now().formatted("yyyy-MM-dd");
         log.info("当前业务时间：{}", businessTime);
-        String loginUrl = BASE_API_URL + "api/login";
+        String loginUrl = baseApiUrl + "api/login";
         HttpRequest request = HttpRequest.post(loginUrl)
                 .header("Pragma", "no-cache")
                 .header("currentContext", "ecanerp")
@@ -303,7 +286,7 @@ public class PersonalWeeklyReportController {
      * @return 任务列表响应内容
      */
     private String requestTaskList(String token) {
-        String url = BASE_API_URL + "api/business";
+        String url = baseApiUrl + "api/business";
         try (HttpResponse response = HttpRequest.post(url)
                 .header("Accept", "application/json, text/plain, */*")
                 .header("Accept-Language", "zh-CN,zh;q=0.9")
@@ -311,9 +294,9 @@ public class PersonalWeeklyReportController {
                 .header("Cache-Control", "no-cache")
                 .header("Connection", "keep-alive")
                 .header("Content-Type", "application/json;charset=UTF-8")
-                .header("Origin", BASE_API_URL)
+                .header("Origin", baseApiUrl)
                 .header("Pragma", "no-cache")
-                .header("Referer", BASE_API_URL)
+                .header("Referer", baseApiUrl)
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0")
                 .header("currentContext", "ecanerp")
                 .header("menuId", "")
