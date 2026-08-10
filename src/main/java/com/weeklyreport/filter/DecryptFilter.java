@@ -1,6 +1,7 @@
 package com.weeklyreport.filter;
 
 import com.weeklyreport.config.CryptoService;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
  */
 @Component
 @Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
+@Slf4j
 public class DecryptFilter implements Filter {
 
     private final CryptoService cryptoService;
@@ -55,8 +57,7 @@ public class DecryptFilter implements Filter {
             chain.doFilter(new PlaintextRequest(request, decrypted.plaintext), response);
         } catch (Exception e) {
             // 不要静默吞异常：把根因打到控制台，否则 400 是黑盒（难以定位是 RSA 还是 AES 失败）
-            org.slf4j.LoggerFactory.getLogger(DecryptFilter.class)
-                    .warn("请求解密失败，返回 400。根因: {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
+            log.warn("请求解密失败，返回 400。根因: {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
             response.sendError(HttpStatus.BAD_REQUEST.value(), "invalid encrypted request");
         }
     }

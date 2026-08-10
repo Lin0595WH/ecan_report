@@ -2,6 +2,7 @@ package com.weeklyreport.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -24,6 +25,7 @@ import java.util.Map;
  * Filter 未放行则不写属性，本 Advice 自动跳过，即「请求没加密，响应也不加密」。
  */
 @RestControllerAdvice
+@Slf4j
 public class EncryptResponseBodyAdvice implements ResponseBodyAdvice<Object> {
 
     private final CryptoService cryptoService;
@@ -71,8 +73,7 @@ public class EncryptResponseBodyAdvice implements ResponseBodyAdvice<Object> {
             return envelope;
         } catch (Exception e) {
             // 加密失败不应阻断业务，降级为明文（仅记录日志）
-            org.slf4j.LoggerFactory.getLogger(EncryptResponseBodyAdvice.class)
-                    .warn("响应加密失败，降级为明文: {}", e.getMessage());
+            log.warn("响应加密失败，降级为明文: {}", e.getMessage());
             return body;
         }
     }
